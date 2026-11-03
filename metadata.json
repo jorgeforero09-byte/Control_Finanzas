@@ -1,0 +1,8 @@
+{
+  "name": "Remix FinanzaPro",
+  "description": "Control interactivo de gastos por categorías, gráficos mensuales de ahorro, sincronización bancaria y exportación a Excel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

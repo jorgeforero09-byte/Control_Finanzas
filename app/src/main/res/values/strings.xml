@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">FinanzaPro</string>
+    <string name="sign_in_with_google">Continuar con Google</string>
+    <string name="tab_dashboard">Resumen</string>
+    <string name="tab_charts">Ahorros</string>
+    <string name="tab_banks">Bancos</string>
+    <string name="tab_export">Excel</string>
+    <string name="fab_add_transaction">Nuevo Movimiento</string>
+    <string name="btn_sync_banks">Sincronizar Bancos</string>
+    <string name="btn_export_excel">Descargar Archivo Excel (.xls)</string>
+    <string name="btn_export_csv">Exportar CSV Compatible con Excel</string>
+    <string name="btn_share_summary">Compartir Resumen del Mes</string>
+    <string name="sign_out_label">Cerrar sesión</string>
+</resources>

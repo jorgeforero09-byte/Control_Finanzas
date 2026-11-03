@@ -1,0 +1,209 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction (expense or income) categorized by the user or synced from a bank account.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated owner."
+        },
+        "title": {
+          "type": "string",
+          "description": "Short description or merchant name."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Transaction amount (positive number)."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["EXPENSE", "INCOME"],
+          "description": "Whether the transaction is an expense or income."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category key (e.g., FOOD, HOUSING, TRANSPORT, ENTERTAINMENT, HEALTH, SHOPPING, UTILITIES, SALARY, INVESTMENT, SAVINGS)."
+        },
+        "accountId": {
+          "type": "string",
+          "description": "Associated bank account ID or CASH."
+        },
+        "accountName": {
+          "type": "string",
+          "description": "Display name of the bank account."
+        },
+        "yearMonth": {
+          "type": "string",
+          "description": "Year-month string in YYYY-MM format for monthly filtering and charts."
+        },
+        "dateString": {
+          "type": "string",
+          "description": "Formatted date string YYYY-MM-DD."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or bank reference."
+        },
+        "isBankSynced": {
+          "type": "boolean",
+          "description": "True if imported via automatic bank synchronization."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (must submit FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (must submit FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "amount",
+        "type",
+        "category",
+        "accountId",
+        "accountName",
+        "yearMonth",
+        "dateString",
+        "notes",
+        "isBankSynced",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "A user's linked bank account or wallet for automatic transaction synchronization and balance tracking.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated owner."
+        },
+        "bankName": {
+          "type": "string",
+          "description": "Name of the financial institution."
+        },
+        "accountType": {
+          "type": "string",
+          "enum": ["CHECKING", "SAVINGS", "CREDIT_CARD", "WALLET"],
+          "description": "Type of account."
+        },
+        "maskedNumber": {
+          "type": "string",
+          "description": "Last 4 digits masked (e.g., **** 4829)."
+        },
+        "balance": {
+          "type": "number",
+          "description": "Current balance in the account."
+        },
+        "currency": {
+          "type": "string",
+          "description": "Currency code (e.g., USD, EUR, COP, MXN)."
+        },
+        "autoSyncEnabled": {
+          "type": "boolean",
+          "description": "Whether automatic bank sync is enabled."
+        },
+        "externalInstitutionId": {
+          "type": "string",
+          "description": "External Open Banking / Plaid institution identifier."
+        },
+        "lastSyncSummary": {
+          "type": "string",
+          "description": "Summary status of the last bank sync."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (must submit FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (must submit FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "bankName",
+        "accountType",
+        "maskedNumber",
+        "balance",
+        "currency",
+        "autoSyncEnabled",
+        "externalInstitutionId",
+        "lastSyncSummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CategoryBudget": {
+      "title": "CategoryBudget",
+      "description": "Monthly budget and savings goal limit per category for the user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID of the authenticated owner."
+        },
+        "category": {
+          "type": "string",
+          "description": "Category key or TOTAL_SAVINGS_GOAL."
+        },
+        "monthlyLimit": {
+          "type": "number",
+          "description": "Target monthly limit or savings goal."
+        },
+        "yearMonth": {
+          "type": "string",
+          "description": "Year-month string in YYYY-MM format."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (must submit FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (must submit FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "userId",
+        "category",
+        "monthlyLimit",
+        "yearMonth",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": {
+        "$ref": "#/entities/Transaction"
+      },
+      "description": "Per-user financial transactions (expenses and incomes)."
+    },
+    "/users/{userId}/bank_accounts/{accountId}": {
+      "schema": {
+        "$ref": "#/entities/BankAccount"
+      },
+      "description": "Per-user linked bank accounts for automatic synchronization."
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": {
+        "$ref": "#/entities/CategoryBudget"
+      },
+      "description": "Per-user monthly category budgets and savings targets."
+    }
+  }
+}

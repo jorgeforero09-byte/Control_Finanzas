@@ -1,0 +1,175 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitive Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity Validation Helpers
+    function isValidTransaction(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+             (data.amount is int || data.amount is float) && data.amount > 0 && data.amount <= 1000000000 &&
+             data.type is string && (data.type == 'EXPENSE' || data.type == 'INCOME') &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.accountId is string && data.accountId.size() >= 1 && data.accountId.size() <= 128 &&
+             data.accountName is string && data.accountName.size() >= 1 && data.accountName.size() <= 100 &&
+             data.yearMonth is string && data.yearMonth.size() == 7 && data.yearMonth.matches('^[0-9]{4}-[0-9]{2}$') &&
+             data.dateString is string && data.dateString.size() == 10 && data.dateString.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             data.notes is string && data.notes.size() <= 500 &&
+             data.isBankSynced is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidBankAccount(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.bankName is string && data.bankName.size() >= 1 && data.bankName.size() <= 100 &&
+             data.accountType is string && (data.accountType == 'CHECKING' || data.accountType == 'SAVINGS' || data.accountType == 'CREDIT_CARD' || data.accountType == 'WALLET') &&
+             data.maskedNumber is string && data.maskedNumber.size() >= 4 && data.maskedNumber.size() <= 30 &&
+             (data.balance is int || data.balance is float) && data.balance >= -1000000000 && data.balance <= 1000000000 &&
+             data.currency is string && data.currency.size() >= 1 && data.currency.size() <= 10 &&
+             data.autoSyncEnabled is bool &&
+             data.externalInstitutionId is string && data.externalInstitutionId.size() >= 1 && data.externalInstitutionId.size() <= 100 &&
+             data.lastSyncSummary is string && data.lastSyncSummary.size() <= 250 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidCategoryBudget(data, userId) {
+      return data.userId is string && data.userId == userId && data.userId == request.auth.uid &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             (data.monthlyLimit is int || data.monthlyLimit is float) && data.monthlyLimit > 0 && data.monthlyLimit <= 1000000000 &&
+             data.yearMonth is string && data.yearMonth.size() == 7 && data.yearMonth.matches('^[0-9]{4}-[0-9]{2}$') &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /users/{userId} {
+      // Transactions Subcollection
+      match /transactions/{transactionId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(transactionId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(transactionId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'title', 'amount', 'type', 'category',
+                           'accountId', 'accountName', 'yearMonth', 'dateString',
+                           'notes', 'isBankSynced', 'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'title', 'amount', 'type', 'category',
+                           'accountId', 'accountName', 'yearMonth', 'dateString',
+                           'notes', 'isBankSynced', 'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidTransaction(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(transactionId) &&
+                         isValidTransaction(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'title', 'amount', 'type', 'category',
+                           'accountId', 'accountName', 'yearMonth', 'dateString',
+                           'notes', 'isBankSynced', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(transactionId) && existing().userId == request.auth.uid;
+      }
+
+      // Bank Accounts Subcollection
+      match /bank_accounts/{accountId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(accountId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(accountId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'bankName', 'accountType', 'maskedNumber',
+                           'balance', 'currency', 'autoSyncEnabled',
+                           'externalInstitutionId', 'lastSyncSummary',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'bankName', 'accountType', 'maskedNumber',
+                           'balance', 'currency', 'autoSyncEnabled',
+                           'externalInstitutionId', 'lastSyncSummary',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidBankAccount(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(accountId) &&
+                         isValidBankAccount(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'bankName', 'accountType', 'maskedNumber',
+                           'balance', 'currency', 'autoSyncEnabled',
+                           'externalInstitutionId', 'lastSyncSummary', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(accountId) && existing().userId == request.auth.uid;
+      }
+
+      // Budgets Subcollection
+      match /budgets/{budgetId} {
+        allow get: if isOwner(userId) && isValidId(userId) && isValidId(budgetId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && existing().userId == request.auth.uid;
+
+        allow create: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(budgetId) &&
+                         incoming().keys().hasAll([
+                           'userId', 'category', 'monthlyLimit', 'yearMonth',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'userId', 'category', 'monthlyLimit', 'yearMonth',
+                           'createdAt', 'updatedAt'
+                         ]) &&
+                         isValidCategoryBudget(incoming(), userId);
+
+        allow update: if isOwner(userId) &&
+                         isValidId(userId) &&
+                         isValidId(budgetId) &&
+                         isValidCategoryBudget(incoming(), userId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().diff(existing()).affectedKeys().hasOnly([
+                           'category', 'monthlyLimit', 'yearMonth', 'updatedAt'
+                         ]);
+
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(budgetId) && existing().userId == request.auth.uid;
+      }
+    }
+  }
+}
